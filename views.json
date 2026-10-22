@@ -10,7 +10,7 @@
       },
       {
         "title": "Recent observations",
-        "sql": "select * from occupancy_review order by building,floor",
+        "sql": "select building,floor,capacity,samples,coalesce(latest_observation::text,'Unknown') latest_observation,coalesce(average_present::text,'Unknown') average_present,coalesce(peak_present::text,'Unknown') peak_present,coalesce(average_capacity_pct::text,'Unknown') average_capacity_pct from occupancy_review order by building,floor",
         "note": "Last thirty days only. No observation means unknown, never zero attendance."
       }
     ]
