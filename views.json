@@ -1,13 +1,45 @@
 [
   {
     "name": "week",
-    "title": "This week",
-    "subtitle": "Space Planning for Claude Code: what needs attention, rendered by npm run view",
+    "title": "Weekly space review",
+    "subtitle": "Recorded allocations and observed attendance",
     "sections": [
       {
-        "title": "Needs attention",
-        "note": "TODO(author): point this at the industry's attention view (overdue, stuck, quiet).",
-        "sql": "select 'replace me' as item, 'TODO(author)' as why"
+        "title": "Active allocation",
+        "sql": "select building,floor,people,seats,capacity,spare_seats from floor_load where status='active' order by building,floor"
+      },
+      {
+        "title": "Recent observations",
+        "sql": "select * from occupancy_review order by building,floor",
+        "note": "Last thirty days only. No observation means unknown, never zero attendance."
+      }
+    ]
+  },
+  {
+    "name": "moves",
+    "title": "Move readiness",
+    "sections": [
+      {
+        "title": "Scenario exceptions",
+        "sql": "select e.plan,e.rule,e.subject,e.issue from space_exceptions e join plans p on p.id=e.plan_id where p.status in ('draft','approved') order by e.plan,e.rule"
+      },
+      {
+        "title": "Open tasks",
+        "sql": "select p.name plan,t.name task,t.owner,t.due,t.blocking from move_tasks t join plans p on p.id=t.plan_id where t.status='open' order by t.due"
+      }
+    ]
+  },
+  {
+    "name": "evidence",
+    "title": "Workplace record checks",
+    "sections": [
+      {
+        "title": "Emergency-plan references",
+        "sql": "select name,owner,emergency_ref,review_due from buildings order by name"
+      },
+      {
+        "title": "Capacity evidence",
+        "sql": "select b.name building,f.name floor,f.capacity,f.capacity_ref from floors f join buildings b on b.id=f.building_id order by b.name,f.name"
       }
     ]
   }

@@ -14,5 +14,8 @@ feeds/
 
 # Private exports and import staging files
 exports/
-imports/
+imports/*
+!imports/asi/
+imports/asi/*
+!imports/asi/buildings.csv
 private-*.json

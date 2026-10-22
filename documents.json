@@ -1,11 +1,51 @@
 [
   {
-    "name": "example",
-    "title": "TODO(author): the first document this industry must produce",
-    "for_each": "select gen_random_uuid() as id, 'Example' as name",
+    "name": "move-brief",
+    "title": "Draft move brief",
+    "for_each": "select id,name from plans order by name",
     "file": "name",
     "sections": [
-      { "title": "Details", "sql": "select 'replace me' as item, $1::text as record_id" }
+      {
+        "title": "Decision record",
+        "sql": "select name,status,owner,due,rationale,approved_by,approval_ref from plans where id=$1"
+      },
+      {
+        "title": "Floor allocation",
+        "sql": "select building,floor,people,seats,capacity,spare_seats from floor_load where plan_id=$1 order by building,floor"
+      },
+      {
+        "title": "Checks to resolve",
+        "sql": "select rule,subject,issue from space_exceptions where plan_id=$1"
+      },
+      {
+        "title": "Move checklist",
+        "sql": "select name,owner,due,status,evidence from move_tasks where plan_id=$1 order by due"
+      },
+      {
+        "title": "Operator notes",
+        "sql": "select actor,body,created_at from notes where plan_id=$1 order by created_at"
+      }
+    ]
+  },
+  {
+    "name": "capacity-record",
+    "title": "Draft workplace capacity record",
+    "for_each": "select id,name from buildings order by name",
+    "file": "name",
+    "sections": [
+      {
+        "title": "Emergency planning",
+        "sql": "select name,owner,emergency_ref,review_due from buildings where id=$1",
+        "note": "Recorded references are evidence prompts, not a certificate of legal compliance."
+      },
+      {
+        "title": "Floor evidence",
+        "sql": "select name,capacity,area_sqm,capacity_ref from floors where building_id=$1 order by name"
+      },
+      {
+        "title": "Observation history",
+        "sql": "select f.name floor,o.observed_on,o.present,o.method,o.evidence from observations o join floors f on f.id=o.floor_id where f.building_id=$1 order by o.observed_on desc"
+      }
     ]
   }
 ]

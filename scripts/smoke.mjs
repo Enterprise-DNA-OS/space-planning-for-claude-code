@@ -1,0 +1,68 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import {spawnSync} from 'node:child_process';
+import {getDb,REPO_ROOT} from './lib/db.mjs';
+import {migrate} from './migrate.mjs';
+import {seed} from './seed.mjs';
+import {execute,questions,parseArgs} from './spaces.mjs';
+import {parseCsv} from './lib/csv.mjs';
+const temp=fs.mkdtempSync(path.join(os.tmpdir(),'space-planning-'));
+process.env.DATABASE_URL=process.env.TEST_DATABASE_URL||'';process.env.DATA_DIR=path.join(temp,'db');process.env.OUTPUT_DIR=path.join(temp,'out');
+let db,count=0;const ok=(v,m)=>{assert.ok(v,m);count++;};const reject=async(p,re)=>{await assert.rejects(p,re);count++;};
+const actor='Test planner';const run=(c,arg,o={})=>execute(db,c,arg,o);const today=new Date().toISOString().slice(0,10);const future='2099-01-01';
+function files(dir){return fs.existsSync(dir)?fs.readdirSync(dir,{withFileTypes:true}).flatMap(e=>e.isDirectory()?files(path.join(dir,e.name)):[path.join(dir,e.name)]):[];}
+try{
+ db=await getDb();if(process.env.TEST_DATABASE_URL){const found=await db.query("select tablename from pg_tables where schemaname='public'");assert.equal(found.length,0,'TEST_DATABASE_URL must identify an empty disposable database');}
+ await migrate(db);await seed(db);await seed(db);ok((await migrate(db)).ran.length===0,'Migrations repeat');ok((await run('buildings')).length===2,'Seed repeat');
+ for(const c of ['help','buildings','floors','departments','plans','space-review','occupancy','move-readiness','compliance','attention','activity'])ok(await run(c),c);
+ ok((await run('compliance')).some(x=>x.rule==='CAPACITY'),'Capacity exception');ok((await run('compliance')).some(x=>x.rule==='PEAK-COVERAGE'),'Peak attendance exception');
+ ok((await run('occupancy')).find(x=>x.floor==='Hill Ground').average_present===null,'Missing observation is unknown');
+ ok((await run('plan','harbour consolidation')).plan.name==='Harbour consolidation','Case-insensitive name');await reject(run('plan','footprint missing'),/No matching/);await reject(run('plan','40000000'),/Ambiguous/);
+ ok((await run('compare','Harbour consolidation')).some(x=>x.proposed_spare<0),'Comparison shows negative capacity');ok((await run('insights')).length===questions.length,'Ten questions');
+ await reject(run('approve','Harbour consolidation',{actor,evidence:'Human review'}),/blocked/);
+ await reject(run('add-building',null,{name:'X',owner:'X'}),/actor/);
+ const b=await run('add-building',null,{actor,name:'Test Office',region:'NZ',tenure:'leased',owner:'Planner'});
+ await run('update-building',b.id.slice(0,8),{actor,emergency:'plans/emergency-test','review-due':future});
+ const f=await run('add-floor',null,{actor,building:b.id,name:'Test Floor',capacity:'50',area:'400',evidence:'layout/test'});
+ await reject(run('add-floor',null,{actor,building:b.id,name:'Bad floor',capacity:'-1'}),/integer/);
+ await run('update-floor',f.id,{actor,capacity:'60'});
+ const d=await run('add-department',null,{actor,name:'Test Team',headcount:'2',peak:'100',owner:'Planner'});
+ await run('update-department',d.id,{actor,headcount:'3',peak:'80'});
+ const p=await run('create-plan',null,{actor,name:'Test scenario',owner:'Planner',due:future,rationale:'Test the complete move workflow',from:'Current footprint'});
+ await run('allocate',p.id,{actor,floor:f.id,department:d.id,people:'3',seats:'3'});
+ const tasks=await run('add-task',p.id,{actor,name:'Check access',owner:'Planner',due:today});
+ await reject(run('complete-task',tasks.id,{actor}),/evidence/);await run('complete-task',tasks.id,{actor,evidence:'access/review-1'});await reject(run('complete-task',tasks.id,{actor,evidence:'again'}),/already/);
+ await run('update-building','Hill Office',{actor,emergency:'emergency/hill','review-due':future});await run('update-floor','Hill Ground',{actor,evidence:'capacity/hill'});
+ await run('approve',p.id,{actor,evidence:'decision/1'});
+ await reject(run('allocate',p.id,{actor,floor:f.id,department:d.id,people:'3',seats:'4'}),/draft/);
+ await run('update-department',d.id,{actor,owner:'New owner'});
+ await reject(run('activate',p.id,{actor}),/Inputs changed/);
+ await run('reopen',p.id,{actor,reason:'Changed department owner'});await run('approve',p.id,{actor,evidence:'decision/2'});await run('activate',p.id,{actor});
+ ok((await run('plans')).filter(x=>x.status==='active').length===1,'One active plan');ok((await run('plan','Current footprint')).plan.status==='archived','Old plan archived');await reject(run('reopen',p.id,{actor,reason:'x'}),/Only approved/);
+ const obs=await run('observe',f.id,{actor,date:today,present:'61',method:'manual',evidence:'count/test'});ok(obs.present===61,'Real over-capacity observation retained and flagged');ok((await run('insights'))[8].rows.length===1,'Observed over-capacity finding');await reject(run('observe',f.id,{actor,date:future,present:'1',method:'manual',evidence:'x'}),/future/);
+ await reject(run('create-plan',null,{actor,name:'Bad date',owner:'P',due:'2026-02-30',rationale:'x'}),/Invalid date/);
+ const p2=await run('create-plan',null,{actor,name:'Missing headcount',owner:'P',due:future,rationale:'Exception proof'});const a=await run('allocate',p2.id,{actor,floor:f.id,department:d.id,people:'3',seats:'3'});await run('unassign',a.id,{actor});ok((await run('compliance',p2.id)).some(x=>x.rule==='HEADCOUNT'),'Missing headcount');
+ const emptyFloor=await run('add-floor',null,{actor,building:b.id,name:'Unused unreviewed floor',capacity:'1'});const emptyAllocation=await run('allocate',p2.id,{actor,floor:emptyFloor.id,department:d.id,people:'0',seats:'0'});ok(!(await run('compliance',p2.id)).some(x=>x.rule==='CAPACITY-EVIDENCE'),'Zero allocation requires no floor evidence');
+ await run('log',p.id,{actor,note:'<script>alert(1)</script> Planning note'});
+ for(const [cmd,arg]of [['weekly-review'],['draft-move-brief',p.id],['draft-capacity-review']])ok(fs.existsSync((await run(cmd,arg)).draft),cmd);
+ const file=path.join(REPO_ROOT,'imports/asi/buildings.csv');const before=(await run('buildings')).length;
+ ok((await run('import','asi',{actor,file,'dry-run':true})).created===2,'Preview import');ok((await run('buildings')).length===before,'Preview rollback');ok((await run('export')).import_batches.length===0,'Preview leaves no source batch');
+ ok((await run('import','asi',{actor,file})).created===2,'Building import');ok((await run('import','asi',{actor,file})).unchanged===2,'Idempotent import');ok((await run('buildings')).find(x=>x.name==='Estuary Office').source_key==='asi:00041','Preserve leading zeros');
+ await run('update-building','Estuary Office',{actor,owner:'Local owner'});await run('import','asi',{actor,file});ok((await run('buildings')).find(x=>x.name==='Estuary Office').owner==='Local owner','Reimport preserves local work');
+ const bad=path.join(temp,'bad.csv');fs.writeFileSync(bad,fs.readFileSync(file,'utf8').replace('Estuary Office','Changed Office'));await reject(run('import','asi',{actor,file:bad}),/Changed source/);
+ fs.writeFileSync(bad,'UUID,Name,Region\n900,First new,North\n901,Test Office,South\n');await reject(run('import','asi',{actor,file:bad}),/unique|duplicate/i);ok(!(await run('buildings')).some(x=>x.name==='First new'),'Whole batch rollback');
+ fs.writeFileSync(bad,'UUID,Name,Region\n900,First new,North\n900,Second new,South\n');await reject(run('import','asi',{actor,file:bad}),/Duplicate source/);
+ fs.writeFileSync(bad,'Name,Show\nBad visibility,maybe\n');await reject(run('import','asi',{actor,file:bad}),/Unrecognised Show/);
+ const mapping=path.join(temp,'map.json');fs.writeFileSync(mapping,JSON.stringify({name:'Building label',id:'Key'}));fs.writeFileSync(bad,'Key,Building label\n00100,"Office with a\nnewline"\n');ok((await run('import','asi',{actor,file:bad,map:mapping})).created===1,'Mapped headers and quoted newline');
+ assert.throws(()=>parseCsv('Name,Name\na,b'),/unique/);count++;assert.throws(()=>parseCsv('Name\n"unterminated'),/unclosed/);count++;assert.throws(()=>parseArgs(['plans','--jsno']),/Unknown option/);count++;
+ const out=await run('export');ok(out.source_records.length===3&&out.import_batches[0].original_csv.length>0&&out.audit_events.length>0,'Complete source and audit export');
+ const dest=path.join(temp,'export.json');await run('export',null,{file:dest});ok(JSON.parse(fs.readFileSync(dest)).format==='space-planning-v1','Export file');await reject(run('export',null,{file:dest}),/EEXIST/);
+ await reject(run('nonexistent'),/Unknown command/);
+ await db.close();db=null;
+ for(const args of [['scripts/spaces.mjs','space-review','--json'],['scripts/view.mjs'],['scripts/docs.mjs']]){const p=spawnSync(process.execPath,args,{cwd:REPO_ROOT,env:process.env,encoding:'utf8'});ok(p.status===0,p.stderr);if(args[1]==='space-review')ok(Array.isArray(JSON.parse(p.stdout)),'JSON CLI');}
+ const html=files(process.env.OUTPUT_DIR).filter(f=>f.endsWith('.html'));ok(html.length>=8,'Branded reports and views');ok(html.some(f=>fs.readFileSync(f,'utf8').includes('&lt;script&gt;')),'Escaped HTML');ok(html.every(f=>fs.readFileSync(f,'utf8').includes('<!doctype html>')),'Complete HTML');
+ const cli=spawnSync(process.execPath,['scripts/spaces.mjs','plan','40000000'],{cwd:REPO_ROOT,env:process.env,encoding:'utf8'});ok(cli.status===1&&cli.stderr.includes('Ambiguous'),'Ambiguity exits 1 with candidates');
+ console.log(`PASS: ${count} checks (${process.env.TEST_DATABASE_URL?'PostgreSQL':'PGlite'}). Scenario gates, stale approvals, imports, rollback, drafts, reports and CLI.`);
+}finally{if(db)await db.close();fs.rmSync(temp,{recursive:true,force:true});}

@@ -1,115 +1,99 @@
-<h1 align="center">Space Planning for Claude Code</h1>
+# Space Planning for Claude Code
 
-<p align="center">
-  <strong>The open-source workplace space planning desk that is just a database and Claude Code.</strong>
-</p>
+Your workplace allocations, attendance evidence and move scenarios in a database you own. Free MIT code from Enterprise DNA. Works with Claude Code, Codex, OpenCode or Cursor.
 
-<p align="center">
-  Created by <a href="https://www.enterprisedna.co"><strong>Enterprise DNA</strong></a>. Free and open source. Works with Claude Code, Codex, OpenCode or Cursor.
-</p>
+| Do it yourself | We customise it | We run it for you |
+|---|---|---|
+| Free code. Install and run the demo. Hosting and coding-agent costs are yours. | Your buildings, capacity rules, exports and screens. [Get your version built](https://enterprisedna.co/omni/book?offer=replace-software&utm_source=github&utm_medium=readme&utm_campaign=accruent-space-intelligence). | Installed and operated through Omni by Enterprise DNA. One setup fee, then a retainer. [Book a call](https://enterprisedna.co/omni/book?offer=replace-software&utm_source=github&utm_medium=readme&utm_campaign=accruent-space-intelligence). |
 
-<!-- three-doors -->
-<table align="center">
-  <tr>
-    <td align="center"><strong>Do it yourself</strong><br/>Clone it, run it, own it. Free, MIT.<br/><a href="#quick-start">Quick start</a></td>
-    <td align="center"><strong>We customise it</strong><br/>Your fields, your rules, your Accruent Space Intelligence data brought across.<br/><a href="https://enterprisedna.co/omni/book/?utm_source=github&utm_medium=readme&utm_campaign=accruent-space-intelligence">Book a call</a></td>
-    <td align="center"><strong>We run it for you</strong><br/>Installed, connected and operated inside Omni. Setup fee, then a retainer.<br/><a href="https://enterprisedna.co/omni/instead-of/accruent-space-intelligence?utm_source=github&utm_medium=readme&utm_campaign=accruent-space-intelligence">How it works</a></td>
-  </tr>
-</table>
+## The workplace planning desk
 
-<p align="center">
-  <a href="#what-is-this">What is this</a> &bull;
-  <a href="#why-no-front-end">Why no front end</a> &bull;
-  <a href="#quick-start">Quick start</a> &bull;
-  <a href="#the-commands">Commands</a> &bull;
-  <a href="#instead-of-accruent-space-intelligence">Instead of Accruent Space Intelligence</a> &bull;
-  <a href="#want-it-installed-and-run-for-you">Installed for you</a> &bull;
-  <a href="#license">License</a>
-</p>
+Run the weekly space review, compare a proposed move, check peak attendance assumptions, chase move tasks and prepare the decision pack. Drafts show over-capacity floors and incomplete assignments. Approval waits until the record checks pass and a person supplies their decision. If inputs change afterwards, activation requires fresh approval.
 
-<p align="center">
-  <img src="https://img.shields.io/badge/Node-20+-339933?style=flat-square" alt="Node 20+" />
-  <img src="https://img.shields.io/badge/PostgreSQL-any-336791?style=flat-square" alt="PostgreSQL" />
-  <img src="https://img.shields.io/badge/PGlite-embedded-3ecf8e?style=flat-square" alt="PGlite" />
-  <img src="https://img.shields.io/badge/License-MIT-yellow?style=flat-square" alt="MIT License" />
-</p>
-
----
-
-## What is this
-
-Space Planning for Claude Code does the job you pay Accruent Space Intelligence for, as a Postgres database and a set of agent commands. There is no web front end. You open the folder in [Claude Code](https://claude.com/claude-code) (or Codex, OpenCode, Cursor: see `AGENTS.md`) and ask for what you want in plain language. It runs the right query, and it can answer questions the Accruent Space Intelligence dashboard cannot.
-
-<!-- TODO(author): the annual bill. One sentence: what a 10 to 50 person business typically pays Accruent Space Intelligence per year, all in, with a source. -->
-
-Want the same thing with a web front end, or built on a different stack? That is a customisation, and it is exactly what Enterprise DNA does: [book a call](https://enterprisedna.co/omni/book/?utm_source=github&utm_medium=readme&utm_campaign=accruent-space-intelligence).
-
-<!-- TODO(author): two or three sentences on what this specific product covers and who it is for. -->
-
-## Why no front end
-
-- The front end was only ever there because the database was hard to talk to. That is no longer true.
-- Your data sits in plain Postgres tables you own. Any tool can read them. No export, no lock-in.
-- No seats, no tiers, no add-ons. Read [docs/why-no-front-end.md](docs/why-no-front-end.md) for the honest trade-offs too.
+Accruent lists Space Intelligence Basic at US$10,000 a year and Advanced at US$30,000 a year, both plus headcount costs. These are vendor list prices, not verified customer invoices. [Vendor pricing](https://www.accruent.com/product-pricing), checked 22 October 2026. This base is a focused planning desk. Read [why no front end](docs/why-no-front-end.md) for the boundary around maps, sensors and booking.
 
 ## Quick start
 
-Sixty seconds, no database install (an embedded Postgres runs inside Node):
+Node 20 or newer. The local demo needs no database server.
 
 ```bash
 git clone https://github.com/Enterprise-DNA-OS/space-planning-for-claude-code.git
 cd space-planning-for-claude-code
 npm install
+npm test
 npm run demo
 ```
 
-Then open the folder in Claude Code and type a slash command. <!-- TODO(author): name the first command to try. -->
+All people, offices, counts and evidence references are fictional. The demo includes a proposed floor over capacity, insufficient seats for one team's peak assumption, an overdue accessibility task and an office with no recent attendance sample. Demo data lives in .data/demo and output in .data/demo-output, isolated even when DATABASE_URL is set.
 
-### Use it with your own Postgres or Supabase
+For further demo questions set DATA_DIR=.data/demo in Bash, or $env:DATA_DIR='.data/demo' in PowerShell. Use a fresh directory and npm run migrate for real records. Never seed a real business database. [CLI reference](docs/cli.md).
 
-Copy `.env.example` to `.env`, set `DATABASE_URL`, then `npm run migrate`. Same commands, shared data, no per-seat fee.
+## The weekly rituals
 
-## The commands
-
-<!-- TODO(author): a table of the slash commands in .claude/commands and what each one does. -->
-
-| Command | What it does |
+| Command | Result |
 |---|---|
-| `/...` | ... |
+| /space-review | Active footprint, people, seats and capacity. |
+| /occupancy | Actual attendance counts, sample dates and gaps. |
+| /compare | Proposed seats beside the current footprint. |
+| /move-readiness | Scenario deadlines, owners and blockers. |
+| /compliance | Evidence references and planning exceptions. |
+| /weekly-review | Monday review from current space, attention and checks. |
+| /draft-move-brief | Proposed changes, decisions and move checklist. |
+| /customise | Your fields and rules through a tested migration. |
+| /new-view | Another read-only answer in your business brand. |
 
-## Instead of accruent-space-intelligence
+39 recipes live in .claude/commands and route through one CLI. All mutations have an actor label and an audit record. They send nothing. See CLAUDE.md for the full routing table.
 
-<!-- TODO(author): how to bring data across from Accruent Space Intelligence; link docs/replace-accruent-space-intelligence.md -->
+## Ten questions across the records
 
-## Architecture
+1. Which draft scenarios exceed floor capacity?
+2. Which departments have fewer seats than their peak attendance assumption?
+3. Which occupied floors lack a recent observation?
+4. Which plans depend on an overdue emergency-plan review?
+5. Which owners have overdue blocking move tasks?
+6. Which floors have spare assigned seats and low observed attendance?
+7. Which scenarios do not account for every department headcount?
+8. Which move scenarios have no note in the last fourteen days?
+9. Which recorded observations exceed the floor capacity?
+10. Which imported buildings still need a floor register and emergency reference?
 
+Every question is implemented by the insights command and runs on the demo today. These are connected questions you can own and adapt. They are not a claim that a configured incumbent report can never answer them.
+
+## Your first hour: ten things to ask for
+
+1. Show the current footprint by building and floor.
+2. Explain the Harbour consolidation blockers.
+3. Compare that proposal with the active footprint.
+4. Show which attendance counts are missing or old.
+5. Draft the Monday space review.
+6. Draft the move brief with named task owners.
+7. Import my building export after a trial run.
+8. Add our floor capacity and its review reference.
+9. Add our workplace coordinator field through a migration.
+10. Add a read-only view of overdue tasks by owner.
+
+## Records and review packs
+
+npm run view renders the week, move-readiness and evidence dashboards. npm run docs renders draft move briefs and workplace capacity records. Set the business name, logo and colours in brand.json. Outputs are read-only HTML with no action buttons or server.
+
+[Compliance checks](docs/compliance.md) cite New Zealand emergency-plan and workplace-facilities sources. They check recorded references and internal planning rules. A competent person must assess the actual workplace. No code here calculates legal fire capacity or certifies a move. Peak attendance assumptions and observed counts remain separate.
+
+## Bring the building register across
+
+ASI documents CSV export from Facilities. One command imports the building register, retaining original CSV, raw fields and source identity. It supports mapped headers, validates the full batch, previews without saving, and refuses changed source rows until reconciled. The fixture uses documented field labels and fictional data, not a customer export.
+
+```bash
+node scripts/spaces.mjs import asi --file="imports/asi/buildings.csv" --dry-run --actor="Workplace planner"
 ```
-space-planning-for-claude-code/
-  CLAUDE.md                 how the operator wants this run (routing table + house rules)
-  AGENTS.md                 the same, for Codex / OpenCode / Cursor / Gemini CLI
-  .claude/commands/         the slash commands
-  scripts/                  the CLI the commands drive
-  scripts/lib/db.mjs        one adapter: DATABASE_URL (pg) or embedded PGlite
-  supabase/migrations/      plain SQL schema
-  supabase/seed.sql         demo data
-  docs/                     the thesis and the migration guide
-```
 
-## Built for coding agents
+Floors, allocation scenarios, sensor history, drawings and approvals need separate reconciliation. A building import is not a complete enterprise migration. [Switching guide](docs/replace-accruent-space-intelligence.md).
 
-The database, CLI and command recipes work with Claude Code, Codex, OpenCode or Cursor. Ask your coding agent for a new command and have it implement and test the change against the same records.
+## Storage and verification
 
-## Contributing
+Plain PostgreSQL migrations also run on PGlite. UUIDs, foreign keys, timestamps and uniqueness constraints support the record model. Mutations serialize through database locks. RLS denies public access; the CLI operates as database owner. Shared production use needs authenticated access, scoped permissions, backup and tested restore. Actor labels and audit history are not tamper-proof signatures.
 
-Issues and pull requests are welcome. Keep the shape: plain SQL, a small CLI, a slash command per recurring job, no front end.
+npm test uses temporary local data and output, exercises the reads and writes, and proves approval gates, stale-input detection, rollback, repeat imports, source preservation, drafts and escaped HTML. To test PostgreSQL, point TEST_DATABASE_URL only at an empty disposable database. Tests refuse a nonempty public schema. CI runs PGlite on Linux and Windows with Node 20 and 22, plus PostgreSQL 16. See Actions for actual platform results.
 
-## Want it installed and run for you?
+## Licence
 
-Enterprise DNA installs Space Planning for Claude Code for your business, migrates your Accruent Space Intelligence data, connects it to the rest of your tools, and runs it for you as part of **Omni**, our managed Command Center. One setup fee, then a monthly retainer.
-
-- Book a call: [enterprisedna.co/omni/book](https://enterprisedna.co/omni/book/?offer=replace-software&utm_source=github&utm_medium=readme&utm_campaign=accruent-space-intelligence)
-- Read more: [enterprisedna.co/omni/instead-of/accruent-space-intelligence](https://enterprisedna.co/omni/instead-of/accruent-space-intelligence?utm_source=github&utm_medium=readme&utm_campaign=accruent-space-intelligence)
-
-## License
-
-MIT. Copyright (c) 2026 Enterprise DNA.
+MIT. Copyright (c) 2026 Enterprise DNA. Accruent and Accruent Space Intelligence belong to their owners. This independent project is not affiliated with or endorsed by Accruent.
